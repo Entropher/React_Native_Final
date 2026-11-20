@@ -1,8 +1,14 @@
 import { Image } from 'expo-image';
-import { Trash2 } from 'lucide-react-native';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { ShoppingBag, Trash2 } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, SlideOutLeft } from 'react-native-reanimated';
 
 import { QuantityStepper } from '@/components/quantity-stepper';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { enterStaggered, layoutTransition } from '@/constants/motion';
+import { Colors, Radius, Shadow } from '@/constants/theme';
 import {
   removeFromCart,
   selectCartItemCount,
@@ -19,98 +25,132 @@ export default function CartScreen() {
 
   if (items.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.message}>კალათა ცარიელია.</Text>
-      </View>
+      <EmptyState
+        icon={ShoppingBag}
+        title="კალათა ცარიელია."
+        message="დაამატეთ პროდუქტები კატალოგიდან."
+        actionLabel="პროდუქტების ნახვა"
+        onAction={() => router.navigate('/')}
+      />
     );
   }
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.list}
-      renderItem={({ item }) => (
-        <View style={styles.item}>
-          <Image style={styles.image} source={item.image} contentFit="contain" />
-
-          <View style={styles.body}>
-            <Text style={styles.title} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.category}>{item.category}</Text>
-
-            <View style={styles.controls}>
-              <QuantityStepper
-                productId={item.id}
-                productTitle={item.title}
-                quantity={item.quantity}
-              />
-              <Text style={styles.price}>${(item.price * item.quantity).toFixed(2)}</Text>
+    <View style={styles.flex}>
+      <ScrollView contentContainerStyle={styles.list}>
+        {items.map((item, index) => (
+          <Animated.View
+            key={item.id}
+            entering={enterStaggered(index)}
+            exiting={SlideOutLeft.duration(250)}
+            layout={layoutTransition}
+            style={styles.item}>
+            <View style={styles.imageFrame}>
+              <Image style={styles.image} source={item.image} contentFit="contain" />
             </View>
-          </View>
 
-          <Pressable
-            style={styles.remove}
-            onPress={() => dispatch(removeFromCart(item.id))}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title} კალათიდან წაშლა`}>
-            <Trash2 size={22} color="#666" strokeWidth={1.6} />
-          </Pressable>
+            <View style={styles.body}>
+              <View style={styles.titleRow}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <PressableScale
+                  style={styles.remove}
+                  scaleTo={0.85}
+                  onPress={() => dispatch(removeFromCart(item.id))}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.title} კალათიდან წაშლა`}>
+                  <Trash2 size={17} color={Colors.danger} strokeWidth={2} />
+                </PressableScale>
+              </View>
+              <Text style={styles.category}>{item.category}</Text>
+
+              <View style={styles.controls}>
+                <Text style={styles.price}>${(item.price * item.quantity).toFixed(2)}</Text>
+                <QuantityStepper
+                  productId={item.id}
+                  productTitle={item.title}
+                  quantity={item.quantity}
+                />
+              </View>
+            </View>
+          </Animated.View>
+        ))}
+      </ScrollView>
+
+      <Animated.View
+        entering={FadeInDown.springify().damping(20)}
+        style={styles.summary}
+        accessibilityLabel="კალათის შეჯამება">
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>პროდუქტების რაოდენობა</Text>
+          <Text style={styles.summaryValue}>{itemCount}</Text>
         </View>
-      )}
-      ListFooterComponent={
-        <View style={styles.summary} accessibilityLabel="კალათის შეჯამება">
-          <Text style={styles.summaryText}>პროდუქტების რაოდენობა: {itemCount}</Text>
-          <Text style={styles.summaryText}>
-            ჯამური გადასახადი: <Text style={styles.total}>${total.toFixed(2)}</Text>
-          </Text>
+        <View style={styles.divider} />
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>ჯამური გადასახადი</Text>
+          <Text style={styles.total}>${total.toFixed(2)}</Text>
         </View>
-      }
-    />
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
+  flex: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  message: {
-    color: '#666',
-    fontSize: 15,
   },
   list: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    gap: 12,
+    padding: 16,
+    paddingBottom: 150,
   },
   item: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#d1d1d1',
+    padding: 12,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.card,
+  },
+  imageFrame: {
+    width: 84,
+    height: 96,
+    padding: 10,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceMuted,
   },
   image: {
-    width: 64,
-    height: 88,
+    width: '100%',
+    height: '100%',
   },
   body: {
     flex: 1,
-    gap: 4,
+    gap: 2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   title: {
-    color: '#222',
+    flex: 1,
+    color: Colors.text,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     lineHeight: 19,
   },
+  remove: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: Colors.dangerSoft,
+  },
   category: {
-    color: '#666',
+    color: Colors.textMuted,
     fontSize: 12,
     textTransform: 'capitalize',
   },
@@ -119,31 +159,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 6,
+    marginTop: 'auto',
+    paddingTop: 8,
   },
   price: {
-    color: '#222',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  remove: {
-    width: 34,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: '800',
   },
   summary: {
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingVertical: 24,
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.bar,
   },
-  summaryText: {
-    color: '#444',
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  summaryValue: {
+    color: Colors.text,
     fontSize: 15,
+    fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
   },
   total: {
-    color: '#222',
-    fontSize: 19,
-    fontWeight: '700',
+    color: Colors.primary,
+    fontSize: 22,
+    fontWeight: '800',
   },
 });

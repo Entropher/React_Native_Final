@@ -1,29 +1,26 @@
-import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
+import { CircleAlert, PackageOpen, Truck } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomOut } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AddToCartButton } from '@/components/add-to-cart-button';
-import { Colors } from '@/constants/theme';
+import { DeletedProductCard, ProductCard, ProductCardSkeleton } from '@/components/product-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { enterStaggered, layoutTransition } from '@/constants/motion';
+import { BrandGradient, Colors, Fonts, Radius } from '@/constants/theme';
 import type { Product } from '@/types/product';
 
-const PADDING = 14;
-const GAP = 10;
+const PADDING = 16;
+const GAP = 12;
 
 export default function HomeScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [deletedProducts, setDeletedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  // Changing this number re-runs the fetch effect (used by the "retry" button).
+  const [reloadKey, setReloadKey] = useState(0);
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const cardWidth = (width - PADDING * 2 - GAP) / 2;
 
@@ -38,7 +35,13 @@ export default function HomeScreen() {
       .then((result: Product[]) => setProducts(result.slice(0, 20)))
       .catch(() => setError('პროდუქტების ჩატვირთვა ვერ მოხერხდა.'))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [reloadKey]);
+
+  const retry = () => {
+    setError('');
+    setIsLoading(true);
+    setReloadKey((key) => key + 1);
+  };
 
   const deleteProduct = (productId: number) => {
     const deletedProduct = products.find((product) => product.id === productId);
@@ -56,313 +59,200 @@ export default function HomeScreen() {
     setDeletedProducts((current) => current.filter((product) => product.id !== productId));
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.brand} />
-        <Text style={styles.message}>პროდუქტები იტვირთება...</Text>
-      </View>
-    );
-  }
-
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.message} accessibilityRole="alert">
-          {error}
-        </Text>
+      <View style={[styles.flex, { paddingTop: insets.top }]}>
+        <EmptyState
+          icon={CircleAlert}
+          tone="danger"
+          title={error}
+          message="შეამოწმეთ ინტერნეტკავშირი და სცადეთ ხელახლა."
+          actionLabel="ხელახლა ცდა"
+          onAction={retry}
+        />
       </View>
     );
   }
 
   return (
-    <FlatList
-      data={products}
-      keyExtractor={(product) => String(product.id)}
-      numColumns={2}
-      contentContainerStyle={styles.list}
-      columnWrapperStyle={styles.row}
-      renderItem={({ item }) => (
-        <ProductCard product={item} width={cardWidth} onDelete={deleteProduct} />
-      )}
-      ListEmptyComponent={<Text style={styles.message}>პროდუქტები სიაში აღარ არის.</Text>}
-      ListFooterComponent={
-        deletedProducts.length > 0 ? (
-          <View style={styles.deletedSection}>
-            <View style={styles.deletedHeading}>
-              <Text style={styles.deletedTitle}>წაშლილი პროდუქტები</Text>
-              <Text style={styles.count}>{deletedProducts.length} პროდუქტი</Text>
-            </View>
-            <View style={styles.deletedGrid}>
-              {deletedProducts.map((product) => (
-                <DeletedProductCard
-                  key={product.id}
-                  product={product}
-                  width={cardWidth}
-                  onRestore={restoreProduct}
-                />
-              ))}
-            </View>
-          </View>
-        ) : undefined
-      }
-    />
-  );
-}
-
-type ProductCardProps = {
-  product: Product;
-  width: number;
-  onDelete: (productId: number) => void;
-};
-
-function ProductCard({ product, width, onDelete }: ProductCardProps) {
-  const detailsHref = `/product/${product.id}` as const;
-
-  return (
-    <View style={[styles.card, { width }]}>
-      <Pressable
-        onPress={() => router.push(detailsHref)}
-        accessibilityRole="link"
-        accessibilityLabel={`${product.title} - დეტალები`}>
-        <View style={styles.imageFrame}>
-          <Image style={styles.image} source={product.image} contentFit="contain" />
-        </View>
-      </Pressable>
-
-      <View style={styles.info}>
-        <Text style={styles.shipping}>Ships to Georgia</Text>
-        <Link href={detailsHref} style={styles.title} numberOfLines={2}>
-          {product.title}
-        </Link>
-        <View style={styles.rating}>
-          <Text
-            style={styles.stars}
-            accessibilityLabel={`${product.rating.rate} out of 5 stars`}>
-            {'★'.repeat(Math.round(product.rating.rate))}
-          </Text>
-          <Text style={styles.reviewCount}>
-            {product.rating.count.toLocaleString()} reviews
-          </Text>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-          <View style={styles.actions}>
-            <Link href={detailsHref} style={styles.detailsLink}>
-              დეტალები
-            </Link>
-            <AddToCartButton product={product} />
-          </View>
-        </View>
-      </View>
-
-      <Pressable
-        style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
-        onPress={() => onDelete(product.id)}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={`${product.title} - წაშლა`}>
-        {({ pressed }) => (
-          <Text style={[styles.deleteIcon, pressed && styles.deleteIconPressed]}>×</Text>
-        )}
-      </Pressable>
-    </View>
-  );
-}
-
-type DeletedProductCardProps = {
-  product: Product;
-  width: number;
-  onRestore: (productId: number) => void;
-};
-
-function DeletedProductCard({ product, width, onRestore }: DeletedProductCardProps) {
-  return (
-    <View style={[styles.card, styles.deletedCard, { width }]}>
-      <View style={[styles.imageFrame, styles.deletedCard]}>
-        <Image style={styles.image} source={product.image} contentFit="contain" />
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>
-          {product.title}
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}>
+      <Animated.View entering={FadeIn.duration(400)}>
+        <Text style={styles.eyebrow}>FAKE STORE</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          პროდუქტები
         </Text>
-        <View style={styles.footer}>
-          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-          <Pressable
-            style={({ pressed }) => [styles.restoreButton, pressed && styles.restorePressed]}
-            onPress={() => onRestore(product.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`${product.title} - დაბრუნება`}>
-            <Text style={styles.restoreText}>დაბრუნება</Text>
-          </Pressable>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(80).springify().damping(18)} style={styles.banner}>
+        <View style={styles.bannerIcon}>
+          <Truck size={22} color="#fff" />
         </View>
+        <View style={styles.flex}>
+          <Text style={styles.bannerTitle}>Ships to Georgia</Text>
+          <Text style={styles.bannerText}>მიწოდება საქართველოში</Text>
+        </View>
+      </Animated.View>
+
+      <View style={styles.sectionHeading}>
+        <Text style={styles.sectionTitle}>ყველა პროდუქტი</Text>
+        {!isLoading && (
+          <Animated.View entering={FadeIn} style={styles.countChip}>
+            <Text style={styles.countText}>{products.length} პროდუქტი</Text>
+          </Animated.View>
+        )}
       </View>
-    </View>
+
+      {isLoading ? (
+        <View style={styles.grid} accessibilityLabel="პროდუქტები იტვირთება...">
+          {Array.from({ length: 6 }, (_, index) => (
+            <ProductCardSkeleton key={index} width={cardWidth} />
+          ))}
+        </View>
+      ) : products.length === 0 ? (
+        <View style={styles.emptyList}>
+          <PackageOpen size={28} color={Colors.textMuted} />
+          <Text style={styles.emptyText}>პროდუქტები სიაში აღარ არის.</Text>
+        </View>
+      ) : (
+        <View style={styles.grid}>
+          {products.map((product, index) => (
+            <Animated.View
+              key={product.id}
+              entering={enterStaggered(index)}
+              exiting={ZoomOut.duration(200)}
+              layout={layoutTransition}>
+              <ProductCard product={product} width={cardWidth} onDelete={deleteProduct} />
+            </Animated.View>
+          ))}
+        </View>
+      )}
+
+      {deletedProducts.length > 0 && (
+        <Animated.View
+          entering={FadeInDown.springify().damping(18)}
+          layout={layoutTransition}
+          style={styles.deletedSection}>
+          <View style={styles.sectionHeading}>
+            <Text style={styles.deletedTitle}>წაშლილი პროდუქტები</Text>
+            <View style={styles.countChip}>
+              <Text style={styles.countText}>{deletedProducts.length} პროდუქტი</Text>
+            </View>
+          </View>
+          <View style={styles.grid}>
+            {deletedProducts.map((product) => (
+              <Animated.View
+                key={product.id}
+                entering={FadeInDown.springify().damping(18)}
+                exiting={ZoomOut.duration(200)}
+                layout={layoutTransition}>
+                <DeletedProductCard product={product} width={cardWidth} onRestore={restoreProduct} />
+              </Animated.View>
+            ))}
+          </View>
+        </Animated.View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
+  flex: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 24,
   },
-  message: {
-    paddingVertical: 36,
-    color: Colors.textMuted,
-    fontSize: 15,
-    textAlign: 'center',
+  content: {
+    paddingHorizontal: PADDING,
+    paddingBottom: 32,
   },
-  list: {
-    padding: PADDING,
-    gap: GAP,
-  },
-  row: {
-    gap: GAP,
-  },
-  card: {
-    overflow: 'hidden',
-    backgroundColor: Colors.card,
-  },
-  imageFrame: {
-    aspectRatio: 1,
-    padding: 18,
-    backgroundColor: Colors.card,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  info: {
-    flex: 1,
-    paddingHorizontal: 11,
-    paddingBottom: 13,
-  },
-  shipping: {
-    marginBottom: 8,
-    color: '#727272',
-    fontSize: 11,
+  eyebrow: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.6,
   },
   title: {
-    minHeight: 34,
+    marginTop: 2,
     color: Colors.text,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 17,
+    fontSize: 30,
+    fontWeight: '800',
   },
-  rating: {
+  banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    columnGap: 8,
-    minHeight: 22,
-    marginTop: 4,
+    gap: 14,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: Radius.lg,
+    backgroundImage: BrandGradient,
+    backgroundColor: Colors.primary,
   },
-  stars: {
-    color: Colors.star,
-    fontSize: 15,
-    letterSpacing: 1,
-  },
-  reviewCount: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 6,
-    marginTop: 'auto',
-    paddingTop: 10,
-  },
-  price: {
-    alignSelf: 'flex-start',
-    color: Colors.text,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  actions: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  detailsLink: {
-    color: '#555',
-    fontSize: 12,
-    textDecorationLine: 'underline',
-  },
-  deleteButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 30,
-    height: 30,
+  bannerIcon: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 15,
-    backgroundColor: '#fff',
-    boxShadow: '0 1px 5px rgba(0, 0, 0, 0.15)',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
   },
-  deleteButtonPressed: {
-    backgroundColor: Colors.danger,
-  },
-  deleteIcon: {
-    color: Colors.danger,
-    fontSize: 22,
-    lineHeight: 24,
-  },
-  deleteIconPressed: {
+  bannerTitle: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  bannerText: {
+    marginTop: 2,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  countChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primarySoft,
+  },
+  countText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GAP,
+  },
+  emptyList: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 36,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+  },
+  emptyText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
   deletedSection: {
     marginTop: 12,
-    paddingTop: 28,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-  },
-  deletedHeading: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginBottom: 18,
   },
   deletedTitle: {
     flexShrink: 1,
-    fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
-    fontSize: 22,
-    fontWeight: '500',
     color: Colors.text,
-  },
-  count: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-  },
-  deletedGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-  },
-  deletedCard: {
-    backgroundColor: Colors.deletedCard,
-  },
-  restoreButton: {
-    minHeight: 34,
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: Colors.restoreBorder,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  restorePressed: {
-    borderColor: Colors.restore,
-    backgroundColor: '#eff5ef',
-  },
-  restoreText: {
-    color: Colors.restore,
-    fontSize: 12,
+    fontFamily: Fonts.serif,
+    fontSize: 20,
+    fontWeight: '500',
   },
 });

@@ -1,84 +1,79 @@
 import { StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { BrandGradient, Colors, Radius, Shadow } from '@/constants/theme';
 
-// Styles shared by the login and register screens (from the web app's auth CSS modules).
+// Styles shared by the login and register screens.
 export const authStyles = StyleSheet.create({
   page: {
     flexGrow: 1,
     justifyContent: 'center',
+    gap: 20,
     paddingHorizontal: 20,
-    paddingVertical: 32,
+    paddingBottom: 32,
   },
-  card: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    borderWidth: 1,
-    borderColor: '#e7ebed',
-    borderRadius: 16,
-    backgroundColor: Colors.surface,
-    boxShadow: '0 20px 48px rgba(28, 43, 53, 0.12)',
+  hero: {
+    alignItems: 'center',
   },
-  eyebrow: {
-    marginBottom: 8,
-    color: Colors.eyebrow,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: Colors.authText,
-    fontSize: 32,
-    fontWeight: '700',
-    lineHeight: 38,
-  },
-  description: {
-    marginTop: 8,
-    color: Colors.authMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  form: {
-    gap: 12,
-    marginTop: 24,
-  },
-  submitButton: {
-    minHeight: 48,
+  logo: {
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 18,
+    borderRadius: 20,
+    backgroundImage: BrandGradient,
+    backgroundColor: Colors.primary,
+    boxShadow: '0 10px 24px rgba(35, 75, 199, 0.3)',
+  },
+  eyebrow: {
+    marginBottom: 6,
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  title: {
+    color: Colors.text,
+    fontSize: 30,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  description: {
     marginTop: 6,
-    borderRadius: 8,
-    backgroundColor: Colors.authInk,
-  },
-  submitButtonPressed: {
-    backgroundColor: '#26394d',
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitText: {
-    color: '#fff',
+    color: Colors.textSecondary,
     fontSize: 14,
-    fontWeight: '700',
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  card: {
+    gap: 14,
+    padding: 20,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.raised,
   },
   message: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 7,
-    backgroundColor: Colors.warningBg,
-    color: Colors.warningText,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.warningSoft,
+    color: Colors.warning,
     fontSize: 13,
     lineHeight: 19,
   },
+  messageSuccess: {
+    backgroundColor: Colors.successSoft,
+    color: Colors.success,
+  },
   accountPrompt: {
-    marginTop: 32,
-    color: '#26313c',
+    color: Colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
   accountLink: {
-    color: Colors.authText,
+    color: Colors.primary,
     fontWeight: '700',
   },
 });

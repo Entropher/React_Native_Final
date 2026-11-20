@@ -1,7 +1,10 @@
+import * as Haptics from 'expo-haptics';
 import { Minus, Plus } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 
-import { Colors } from '@/constants/theme';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { Colors, Radius } from '@/constants/theme';
 import { decreaseQuantity, increaseQuantity, MAX_QUANTITY } from '@/store/cart-slice';
 import { useAppDispatch } from '@/store/store';
 
@@ -9,68 +12,77 @@ type Props = {
   productId: number;
   productTitle: string;
   quantity: number;
+  size?: 'md' | 'lg';
+  style?: StyleProp<ViewStyle>;
 };
 
-export function QuantityStepper({ productId, productTitle, quantity }: Props) {
+export function QuantityStepper({ productId, productTitle, quantity, size = 'md', style }: Props) {
   const dispatch = useAppDispatch();
   const canDecrease = quantity > 1;
   const canIncrease = quantity < MAX_QUANTITY;
+  const height = size === 'lg' ? 52 : 40;
+
+  const change = (action: typeof increaseQuantity | typeof decreaseQuantity) => {
+    Haptics.selectionAsync();
+    dispatch(action(productId));
+  };
 
   return (
-    <View style={styles.row} accessibilityLabel={`${productTitle} რაოდენობა`}>
-      <Pressable
-        style={styles.button}
-        onPress={() => dispatch(decreaseQuantity(productId))}
+    <View
+      style={[styles.pill, { height, borderRadius: size === 'lg' ? Radius.md : Radius.sm }, style]}
+      accessibilityLabel={`${productTitle} რაოდენობა`}>
+      <PressableScale
+        style={[styles.button, { width: height, height }]}
+        scaleTo={0.85}
+        onPress={() => change(decreaseQuantity)}
         disabled={!canDecrease}
-        hitSlop={6}
+        hitSlop={4}
         accessibilityRole="button"
         accessibilityLabel="რაოდენობის შემცირება"
         accessibilityState={{ disabled: !canDecrease }}>
-        <Minus size={20} color={canDecrease ? '#222' : Colors.disabled} />
-      </Pressable>
-      <View style={styles.output}>
-        <Text style={styles.outputText} accessibilityLiveRegion="polite">
-          {quantity}
-        </Text>
-      </View>
-      <Pressable
-        style={styles.button}
-        onPress={() => dispatch(increaseQuantity(productId))}
+        <Minus size={18} color={canDecrease ? Colors.primary : Colors.textMuted} strokeWidth={2.4} />
+      </PressableScale>
+
+      {/* `key` re-mounts the number on every change, which replays the "pop" animation. */}
+      <Animated.Text
+        key={quantity}
+        entering={ZoomIn.duration(180)}
+        style={styles.count}
+        accessibilityLiveRegion="polite">
+        {quantity}
+      </Animated.Text>
+
+      <PressableScale
+        style={[styles.button, { width: height, height }]}
+        scaleTo={0.85}
+        onPress={() => change(increaseQuantity)}
         disabled={!canIncrease}
-        hitSlop={6}
+        hitSlop={4}
         accessibilityRole="button"
         accessibilityLabel="რაოდენობის გაზრდა"
         accessibilityState={{ disabled: !canIncrease }}>
-        <Plus size={20} color={canIncrease ? '#222' : Colors.disabled} />
-      </Pressable>
+        <Plus size={18} color={canIncrease ? Colors.primary : Colors.textMuted} strokeWidth={2.4} />
+      </PressableScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primarySoft,
   },
   button: {
-    width: 28,
-    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  output: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 6,
-    backgroundColor: Colors.surface,
-  },
-  outputText: {
-    color: '#222',
-    fontSize: 18,
+  count: {
+    minWidth: 28,
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 });

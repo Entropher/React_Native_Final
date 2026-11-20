@@ -1,8 +1,13 @@
+import type { LucideIcon } from 'lucide-react-native';
+import { CircleAlert, Mail, MapPin, Phone } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AvatarPicker } from '@/components/avatar-picker';
-import { Colors } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { BrandGradient, Colors, Radius, Shadow } from '@/constants/theme';
 
 // Shape of https://fakestoreapi.com/users/3 (only the fields shown here).
 type User = {
@@ -16,6 +21,8 @@ type User = {
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [hasError, setHasError] = useState(false);
+  // Changing this number re-runs the fetch effect (used by the "retry" button).
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     fetch('https://fakestoreapi.com/users/3')
@@ -27,103 +34,149 @@ export default function ProfileScreen() {
       })
       .then(setUser)
       .catch(() => setHasError(true));
-  }, []);
+  }, [reloadKey]);
+
+  if (hasError) {
+    return (
+      <EmptyState
+        icon={CircleAlert}
+        tone="danger"
+        title="პროფილის ჩატვირთვა ვერ მოხერხდა. სცადეთ მოგვიანებით."
+        actionLabel="ხელახლა ცდა"
+        onAction={() => {
+          setHasError(false);
+          setReloadKey((key) => key + 1);
+        }}
+      />
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.page} accessibilityLabel="იტვირთება...">
+        <Skeleton style={styles.skeletonHero} />
+        <Skeleton style={styles.skeletonCard} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <View style={styles.profile}>
-        {hasError ? (
-          <Text style={styles.error} accessibilityRole="alert">
-            პროფილის ჩატვირთვა ვერ მოხერხდა. სცადეთ მოგვიანებით.
+      <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.hero}>
+        <AvatarPicker
+          initials={`${user.name.firstname[0]}${user.name.lastname[0]}`.toUpperCase()}
+        />
+        <View style={styles.identity}>
+          <Text style={styles.name}>
+            {user.name.firstname} {user.name.lastname}
           </Text>
-        ) : !user ? (
-          <ActivityIndicator color={Colors.brand} />
-        ) : (
-          <>
-            <AvatarPicker
-              initials={`${user.name.firstname[0]}${user.name.lastname[0]}`.toUpperCase()}
-            />
-            <View style={styles.identity}>
-              <Text style={styles.name}>
-                {user.name.firstname} {user.name.lastname}
-              </Text>
-              <Text style={styles.username}>@{user.username}</Text>
-            </View>
+          <Text style={styles.username}>@{user.username}</Text>
+        </View>
+      </Animated.View>
 
-            <View style={styles.details}>
-              <Detail label="ელფოსტა" value={user.email} />
-              <Detail label="ტელეფონი" value={user.phone} />
-              <Detail
-                label="მისამართი"
-                value={`${user.address.number} ${user.address.street}, ${user.address.city}`}
-              />
-            </View>
-          </>
-        )}
-      </View>
+      <Animated.View entering={FadeInDown.delay(100).springify().damping(18)} style={styles.card}>
+        <DetailRow icon={Mail} label="ელფოსტა" value={user.email} />
+        <View style={styles.divider} />
+        <DetailRow icon={Phone} label="ტელეფონი" value={user.phone} />
+        <View style={styles.divider} />
+        <DetailRow
+          icon={MapPin}
+          label="მისამართი"
+          value={`${user.address.number} ${user.address.street}, ${user.address.city}`}
+        />
+      </Animated.View>
     </ScrollView>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function DetailRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <View>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
+    <View style={styles.row} accessible accessibilityLabel={`${label}: ${value}`}>
+      <View style={styles.rowIcon}>
+        <Icon size={18} color={Colors.primary} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
-    paddingHorizontal: 16,
-    paddingVertical: 28,
+    gap: 16,
+    padding: 16,
   },
-  profile: {
-    paddingHorizontal: 18,
-    paddingVertical: 22,
-    borderWidth: 1,
-    borderColor: '#e3e3e3',
-    borderRadius: 8,
-    backgroundColor: '#fff',
+  hero: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 28,
+    borderRadius: Radius.xl,
+    backgroundImage: BrandGradient,
+    backgroundColor: Colors.primary,
+    boxShadow: Shadow.raised,
   },
   identity: {
     alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8e8e8',
+    marginTop: 16,
   },
   name: {
-    color: '#202020',
-    fontSize: 20,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
     textTransform: 'capitalize',
   },
   username: {
     marginTop: 4,
-    color: '#6c6c6c',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
   },
-  details: {
-    gap: 20,
-    paddingTop: 24,
+  card: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.card,
   },
-  detailLabel: {
-    marginBottom: 5,
-    color: '#707070',
-    fontSize: 13,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
   },
-  detailValue: {
-    color: '#202020',
+  rowIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: Colors.primarySoft,
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  rowValue: {
+    marginTop: 2,
+    color: Colors.text,
     fontSize: 15,
+    fontWeight: '600',
   },
-  error: {
-    padding: 18,
-    borderLeftWidth: 3,
-    borderLeftColor: '#b83a32',
-    backgroundColor: '#fff4f2',
-    color: '#872b25',
-    lineHeight: 22,
+  divider: {
+    height: 1,
+    marginLeft: 54,
+    backgroundColor: Colors.border,
+  },
+  skeletonHero: {
+    height: 270,
+    borderRadius: Radius.xl,
+  },
+  skeletonCard: {
+    height: 200,
+    borderRadius: Radius.lg,
   },
 });

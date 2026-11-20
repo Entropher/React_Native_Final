@@ -12,17 +12,19 @@ restoreAndPersistCart();
 export default function RootLayout() {
   return (
     <Provider store={store}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: Colors.brand },
-          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: Colors.background },
+          headerTintColor: Colors.text,
+          headerTitleStyle: { fontWeight: '700' },
+          headerShadowVisible: false,
           headerBackButtonDisplayMode: 'minimal',
-          contentStyle: { backgroundColor: Colors.page },
+          contentStyle: { backgroundColor: Colors.background },
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="product/[id]" options={{ title: 'დეტალები' }} />
-        <Stack.Screen name="register" options={{ title: 'რეგისტრაცია' }} />
+        <Stack.Screen name="register" options={{ title: '' }} />
       </Stack>
     </Provider>
   );

@@ -1,18 +1,26 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
+import { CircleAlert, PackageSearch, Star } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddToCartButton } from '@/components/add-to-cart-button';
-import { Colors } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Colors, Radius, Shadow } from '@/constants/theme';
 import type { Product } from '@/types/product';
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
+
+const enterSection = (delay: number) => FadeInDown.delay(delay).springify().damping(18);
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -55,124 +63,196 @@ export default function ProductDetailsScreen() {
 
   if (status === 'loading') {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.brand} />
+      <View style={styles.page} accessibilityLabel="იტვირთება...">
+        <Skeleton style={styles.imageCard} />
+        <Skeleton style={styles.skeletonChip} />
+        <Skeleton style={styles.skeletonTitle} />
+        <Skeleton style={styles.skeletonLine} />
+        <Skeleton style={styles.skeletonLine} />
       </View>
     );
   }
 
   if (status !== 'ready' || !product) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.description} accessibilityRole="alert">
-          {status === 'not-found'
-            ? 'პროდუქტი ვერ მოიძებნა.'
-            : 'პროდუქტის ჩატვირთვა ვერ მოხერხდა.'}
-        </Text>
-      </View>
+    return status === 'not-found' ? (
+      <EmptyState icon={PackageSearch} title="პროდუქტი ვერ მოიძებნა." />
+    ) : (
+      <EmptyState icon={CircleAlert} tone="danger" title="პროდუქტის ჩატვირთვა ვერ მოხერხდა." />
     );
   }
 
+  const filledStars = Math.round(product.rating.rate);
+
   return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <View style={styles.imageFrame}>
-        <Image style={styles.image} source={product.image} contentFit="contain" />
-      </View>
+    <View style={styles.flex}>
+      <ScrollView contentContainerStyle={[styles.page, { paddingBottom: 120 + insets.bottom }]}>
+        <Animated.View entering={FadeIn.duration(350)} style={styles.imageCard}>
+          <Image style={styles.image} source={product.image} contentFit="contain" transition={250} />
+        </Animated.View>
 
-      <Text style={styles.category}>{product.category}</Text>
-      <Text style={styles.title} accessibilityRole="header">
-        {product.title}
-      </Text>
+        <Animated.View entering={enterSection(80)}>
+          <View style={styles.categoryChip}>
+            <Text style={styles.categoryText}>{product.category}</Text>
+          </View>
+          <Text style={styles.title} accessibilityRole="header">
+            {product.title}
+          </Text>
+        </Animated.View>
 
-      <View style={styles.rating}>
-        <Text
-          style={styles.stars}
-          accessibilityLabel={`${product.rating.rate} out of 5 stars`}>
-          {'★'.repeat(Math.round(product.rating.rate))}
-        </Text>
-        <Text style={styles.ratingValue}>{product.rating.rate.toFixed(1)} / 5</Text>
-        <Text style={styles.reviews}>{product.rating.count.toLocaleString()} reviews</Text>
-      </View>
+        <Animated.View
+          entering={enterSection(140)}
+          style={styles.rating}
+          accessible
+          accessibilityLabel={`${product.rating.rate} out of 5 stars, ${product.rating.count} reviews`}>
+          <View style={styles.stars}>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Star
+                key={index}
+                size={18}
+                color={Colors.star}
+                fill={index < filledStars ? Colors.star : 'transparent'}
+              />
+            ))}
+          </View>
+          <Text style={styles.ratingValue}>{product.rating.rate.toFixed(1)} / 5</Text>
+          <Text style={styles.reviews}>{product.rating.count.toLocaleString()} reviews</Text>
+        </Animated.View>
 
-      <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-      <Text style={styles.description}>{product.description}</Text>
+        <Animated.View entering={enterSection(200)} style={styles.descriptionCard}>
+          <Text style={styles.sectionTitle}>აღწერა</Text>
+          <Text style={styles.description}>{product.description}</Text>
+        </Animated.View>
+      </ScrollView>
 
-      <View style={styles.cartControl}>
-        <AddToCartButton product={product} />
-      </View>
-    </ScrollView>
+      {/* Sticky bar: price + add to cart always visible while scrolling. */}
+      <Animated.View
+        entering={SlideInDown.delay(150).springify().damping(20)}
+        style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        <View>
+          <Text style={styles.priceLabel}>ფასი</Text>
+          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+        </View>
+        <AddToCartButton
+          product={product}
+          label="კალათაში დამატება"
+          size="lg"
+          style={styles.flex}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
+  flex: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
   },
   page: {
+    gap: 16,
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 48,
+    paddingTop: 8,
   },
-  imageFrame: {
-    height: 300,
-    padding: 28,
-    marginBottom: 22,
-    backgroundColor: Colors.card,
+  imageCard: {
+    height: 320,
+    padding: 32,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.card,
   },
   image: {
     width: '100%',
     height: '100%',
   },
-  category: {
-    marginBottom: 12,
-    color: Colors.textSecondary,
-    fontSize: 13,
+  categoryChip: {
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primarySoft,
+  },
+  categoryText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
   title: {
     color: Colors.text,
-    fontSize: 24,
-    fontWeight: '500',
-    lineHeight: 30,
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 29,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 16,
+    gap: 10,
   },
   stars: {
-    color: Colors.star,
-    fontSize: 19,
-    letterSpacing: 1,
+    flexDirection: 'row',
+    gap: 2,
   },
   ratingValue: {
-    color: '#292929',
+    color: Colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   reviews: {
     color: Colors.textSecondary,
     fontSize: 13,
   },
-  price: {
-    marginTop: 24,
+  descriptionCard: {
+    gap: 8,
+    padding: 16,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.card,
+  },
+  sectionTitle: {
     color: Colors.text,
-    fontSize: 30,
+    fontSize: 15,
     fontWeight: '700',
   },
   description: {
-    marginTop: 24,
-    color: '#555',
-    fontSize: 16,
-    lineHeight: 27,
+    color: Colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 24,
   },
-  cartControl: {
-    alignItems: 'flex-start',
-    marginTop: 40,
+  bottomBar: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    backgroundColor: Colors.surface,
+    boxShadow: Shadow.bar,
+  },
+  priceLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  price: {
+    color: Colors.text,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  skeletonChip: {
+    width: 90,
+    height: 24,
+    borderRadius: Radius.pill,
+  },
+  skeletonTitle: {
+    width: '85%',
+    height: 26,
+  },
+  skeletonLine: {
+    height: 16,
   },
 });

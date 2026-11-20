@@ -1,10 +1,12 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, ImageIcon } from 'lucide-react-native';
+import { Camera, ImageIcon, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { Colors } from '@/constants/theme';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { Colors, Radius } from '@/constants/theme';
 
 type Source = 'camera' | 'library';
 
@@ -21,6 +23,7 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 
 // Profile photo that can be taken with the camera or chosen from the gallery.
 // Both need a runtime permission, which is requested the first time each button is used.
+// Styled to sit on the blue gradient header of the Profile screen.
 export function AvatarPicker({ initials }: Props) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -63,39 +66,41 @@ export function AvatarPicker({ initials }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.avatar} importantForAccessibility="no-hide-descendants">
-        {photoUri ? (
-          <Image style={styles.photo} source={photoUri} contentFit="cover" />
-        ) : (
-          <Text style={styles.initials}>{initials}</Text>
-        )}
+      <View style={styles.avatarRing} importantForAccessibility="no-hide-descendants">
+        <View style={styles.avatar}>
+          {photoUri ? (
+            <Animated.View key={photoUri} entering={FadeIn.duration(300)} style={styles.photo}>
+              <Image style={styles.photo} source={photoUri} contentFit="cover" />
+            </Animated.View>
+          ) : (
+            <Text style={styles.initials}>{initials}</Text>
+          )}
+        </View>
       </View>
 
       <View style={styles.buttons}>
-        <PickerButton
-          label="ფოტოს გადაღება"
-          icon={<Camera size={16} color={Colors.brand} />}
-          onPress={() => pickPhoto('camera')}
-        />
+        <PickerButton label="ფოტოს გადაღება" icon={Camera} onPress={() => pickPhoto('camera')} />
         <PickerButton
           label="გალერეიდან არჩევა"
-          icon={<ImageIcon size={16} color={Colors.brand} />}
+          icon={ImageIcon}
           onPress={() => pickPhoto('library')}
         />
       </View>
 
       {error !== '' && (
-        <Text style={styles.error} accessibilityRole="alert">
-          {error}
-          {needsSettings && (
-            <>
-              {' '}
-              <Text style={styles.settingsLink} onPress={() => Linking.openSettings()}>
-                პარამეტრების გახსნა
-              </Text>
-            </>
-          )}
-        </Text>
+        <Animated.View entering={FadeInDown.duration(200)} style={styles.errorPill}>
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+            {needsSettings && (
+              <>
+                {' '}
+                <Text style={styles.settingsLink} onPress={() => Linking.openSettings()}>
+                  პარამეტრების გახსნა
+                </Text>
+              </>
+            )}
+          </Text>
+        </Animated.View>
       )}
     </View>
   );
@@ -103,46 +108,48 @@ export function AvatarPicker({ initials }: Props) {
 
 function PickerButton({
   label,
-  icon,
+  icon: Icon,
   onPress,
 }: {
   label: string;
-  icon: React.ReactNode;
+  icon: LucideIcon;
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-      onPress={onPress}
-      accessibilityRole="button">
-      {icon}
+    <PressableScale style={styles.button} onPress={onPress} accessibilityRole="button">
+      <Icon size={15} color="#fff" />
       <Text style={styles.buttonText}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
+  },
+  avatarRing: {
+    padding: 4,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   avatar: {
-    width: 96,
-    height: 96,
+    width: 104,
+    height: 104,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderRadius: 48,
-    backgroundColor: '#e7edff',
+    borderRadius: 52,
+    backgroundColor: '#fff',
   },
   photo: {
     width: '100%',
     height: '100%',
   },
   initials: {
-    color: '#294bb3',
-    fontSize: 28,
-    fontWeight: '700',
+    color: Colors.primary,
+    fontSize: 32,
+    fontWeight: '800',
   },
   buttons: {
     flexDirection: 'row',
@@ -155,27 +162,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     minHeight: 36,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#c9d4f5',
-    borderRadius: 18,
-    backgroundColor: '#fff',
-  },
-  buttonPressed: {
-    backgroundColor: '#e7edff',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
   },
   buttonText: {
-    color: Colors.brand,
+    color: '#fff',
     fontSize: 13,
     fontWeight: '600',
   },
+  errorPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    backgroundColor: '#fff',
+  },
   error: {
-    color: Colors.error,
+    color: Colors.danger,
     fontSize: 13,
     textAlign: 'center',
   },
   settingsLink: {
-    color: Colors.brand,
+    color: Colors.primary,
     fontWeight: '700',
     textDecorationLine: 'underline',
   },

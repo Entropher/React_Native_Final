@@ -1,13 +1,26 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as SecureStore from 'expo-secure-store';
 import { Link, router, useFocusEffect } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import {
+  Check,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  LogOut,
+  ShoppingBag,
+  UserRound,
+} from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as yup from 'yup';
 
 import { FormField } from '@/components/form-field';
+import { Button } from '@/components/ui/button';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { authStyles } from '@/constants/auth-styles';
 import { Colors } from '@/constants/theme';
 
@@ -24,7 +37,10 @@ const loginSchema = yup.object({
 
 type LoginValues = yup.InferType<typeof loginSchema>;
 
+const enterSection = (delay: number) => FadeInDown.delay(delay).springify().damping(18);
+
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -128,167 +144,178 @@ export default function LoginScreen() {
     }
   };
 
+  const pagePadding = { paddingTop: insets.top + 24 };
+
   if (isRemembered) {
     return (
-      <ScrollView contentContainerStyle={authStyles.page}>
-        <View style={authStyles.card}>
+      <ScrollView contentContainerStyle={[authStyles.page, pagePadding]}>
+        <Animated.View entering={enterSection(0)} style={[authStyles.card, styles.rememberedCard]}>
+          <Animated.View entering={ZoomIn.delay(150).springify()} style={styles.successCircle}>
+            <CircleCheck size={40} color={Colors.success} />
+          </Animated.View>
           <Text style={authStyles.title} accessibilityRole="header">
             შესვლა
           </Text>
-          <Text style={[authStyles.message, styles.success, styles.rememberedMessage]}>
-            თქვენ უკვე შესული ხართ (Remember me).
-          </Text>
-          <Pressable
-            style={({ pressed }) => [
-              authStyles.submitButton,
-              styles.rememberedButton,
-              pressed && authStyles.submitButtonPressed,
-            ]}
+          <Text style={authStyles.description}>თქვენ უკვე შესული ხართ (Remember me).</Text>
+          <Button
+            label="პროფილის ნახვა"
+            icon={UserRound}
+            onPress={() => router.navigate('/profile')}
+            style={styles.fullWidth}
+          />
+          <Button
+            label="გასვლა"
+            icon={LogOut}
+            variant="outline"
             onPress={logOut}
-            accessibilityRole="button">
-            <Text style={authStyles.submitText}>გასვლა</Text>
-          </Pressable>
-        </View>
+            style={styles.fullWidth}
+          />
+        </Animated.View>
       </ScrollView>
     );
   }
 
   return (
     <ScrollView
-      contentContainerStyle={authStyles.page}
+      contentContainerStyle={[authStyles.page, pagePadding]}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets>
-      <View style={authStyles.card}>
+      <Animated.View entering={enterSection(0)} style={authStyles.hero}>
+        <View style={authStyles.logo}>
+          <ShoppingBag size={28} color="#fff" />
+        </View>
+        <Text style={authStyles.eyebrow}>კეთილი იყოს თქვენი დაბრუნება</Text>
         <Text style={authStyles.title} accessibilityRole="header">
           შესვლა
         </Text>
-        <Text style={[authStyles.eyebrow, styles.eyebrow]}>კეთილი იყოს თქვენი დაბრუნება</Text>
         <Text style={authStyles.description}>შედით ანგარიშზე, რომ მაღაზიით ისარგებლოთ</Text>
+      </Animated.View>
 
-        <View style={authStyles.form}>
-          <FormField
-            control={control}
-            name="username"
-            placeholder="მომხმარებლის სახელი"
-            autoComplete="username"
-            textContentType="username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={errors.username}
-          />
-          <FormField
-            control={control}
-            name="password"
-            placeholder="პაროლი"
-            autoComplete="current-password"
-            textContentType="password"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            error={errors.password}
-          />
+      <Animated.View entering={enterSection(100)} style={authStyles.card}>
+        <FormField
+          control={control}
+          name="username"
+          placeholder="მომხმარებლის სახელი"
+          icon={UserRound}
+          autoComplete="username"
+          textContentType="username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={errors.username}
+        />
+        <FormField
+          control={control}
+          name="password"
+          placeholder="პაროლი"
+          icon={LockKeyhole}
+          autoComplete="current-password"
+          textContentType="password"
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={errors.password}
+          rightAccessory={
+            <Pressable
+              onPress={() => setShowPassword((visible) => !visible)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'პაროლის დამალვა' : 'პაროლის ნახვა'}>
+              {showPassword ? (
+                <EyeOff size={19} color={Colors.textSecondary} />
+              ) : (
+                <Eye size={19} color={Colors.textSecondary} />
+              )}
+            </Pressable>
+          }
+        />
 
-          <Pressable
-            style={styles.passwordToggle}
-            onPress={() => setShowPassword((visible) => !visible)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityState={{ selected: showPassword }}>
-            <Text style={styles.passwordToggleText}>
-              {showPassword ? 'პაროლის დამალვა' : 'პაროლის ნახვა'}
-            </Text>
-          </Pressable>
+        <PressableScale
+          style={styles.rememberMe}
+          onPress={() => setRememberMe((checked) => !checked)}
+          hitSlop={6}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: rememberMe }}>
+          <Animated.View
+            style={[
+              styles.checkbox,
+              rememberMe && styles.checkboxChecked,
+              { transitionProperty: ['backgroundColor', 'borderColor'], transitionDuration: 150 },
+            ]}>
+            {rememberMe && (
+              <Animated.View entering={ZoomIn.duration(150)}>
+                <Check size={13} color="#fff" strokeWidth={3} />
+              </Animated.View>
+            )}
+          </Animated.View>
+          <Text style={styles.rememberMeText}>Remember me</Text>
+        </PressableScale>
 
-          <Pressable
-            style={styles.rememberMe}
-            onPress={() => setRememberMe((checked) => !checked)}
-            hitSlop={6}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: rememberMe }}>
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-              {rememberMe && <Check size={12} color="#fff" strokeWidth={3} />}
-            </View>
-            <Text style={styles.rememberMeText}>Remember me</Text>
-          </Pressable>
+        {submitMessage !== '' && (
+          <Animated.Text
+            key={submitMessage}
+            entering={FadeIn.duration(200)}
+            style={[authStyles.message, isLoginSuccessful && authStyles.messageSuccess]}
+            accessibilityRole="alert">
+            {submitMessage}
+          </Animated.Text>
+        )}
 
-          {submitMessage !== '' && (
-            <Text
-              style={[authStyles.message, isLoginSuccessful && styles.success]}
-              accessibilityRole="alert">
-              {submitMessage}
-            </Text>
-          )}
+        <Button
+          label={isSubmitting ? 'მიმდინარეობს...' : 'შესვლა'}
+          loading={isSubmitting}
+          onPress={() => handleSubmit(onSubmit)()}
+        />
+      </Animated.View>
 
-          <Pressable
-            style={({ pressed }) => [
-              authStyles.submitButton,
-              pressed && authStyles.submitButtonPressed,
-              isSubmitting && authStyles.submitButtonDisabled,
-            ]}
-            onPress={() => handleSubmit(onSubmit)()}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-            accessibilityState={{ busy: isSubmitting }}>
-            <Text style={authStyles.submitText}>
-              {isSubmitting ? 'მიმდინარეობს...' : 'შესვლა'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <Text style={authStyles.accountPrompt}>
-        არ გაქვთ ანგარიში?{' '}
-        <Link href="/register" style={authStyles.accountLink}>
-          რეგისტრაცია
-        </Link>
-      </Text>
+      <Animated.View entering={enterSection(200)}>
+        <Text style={authStyles.accountPrompt}>
+          არ გაქვთ ანგარიში?{' '}
+          <Link href="/register" style={authStyles.accountLink}>
+            რეგისტრაცია
+          </Link>
+        </Text>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  eyebrow: {
-    marginTop: 14,
-  },
-  passwordToggle: {
-    alignSelf: 'flex-end',
-  },
-  passwordToggleText: {
-    color: Colors.authLabel,
-    fontSize: 12,
-    fontWeight: '600',
-  },
   rememberMe: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 9,
+    gap: 10,
   },
   checkbox: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: Colors.authLabel,
-    borderRadius: 4,
+    borderColor: Colors.textMuted,
+    borderRadius: 6,
+    backgroundColor: Colors.surface,
   },
   checkboxChecked: {
-    borderColor: Colors.authInk,
-    backgroundColor: Colors.authInk,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary,
   },
   rememberMeText: {
-    color: Colors.authLabel,
-    fontSize: 13,
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
-  success: {
-    backgroundColor: Colors.successBg,
-    color: Colors.successText,
+  rememberedCard: {
+    alignItems: 'center',
   },
-  rememberedMessage: {
-    marginTop: 20,
+  successCircle: {
+    width: 76,
+    height: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 38,
+    backgroundColor: Colors.successSoft,
   },
-  rememberedButton: {
-    marginTop: 16,
+  fullWidth: {
+    alignSelf: 'stretch',
   },
 });
