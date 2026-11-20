@@ -1,18 +1,29 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { Provider } from 'react-redux';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Colors } from '@/constants/theme';
+import { restoreAndPersistCart } from '@/store/cart-storage';
+import { store } from '@/store/store';
 
-SplashScreen.preventAutoHideAsync();
+// Runs once when the app starts (module code runs a single time, unlike a component).
+restoreAndPersistCart();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Provider store={store}>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: Colors.brand },
+          headerTintColor: '#fff',
+          headerBackButtonDisplayMode: 'minimal',
+          contentStyle: { backgroundColor: Colors.page },
+        }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="product/[id]" options={{ title: 'დეტალები' }} />
+        <Stack.Screen name="register" options={{ title: 'რეგისტრაცია' }} />
+      </Stack>
+    </Provider>
   );
 }
